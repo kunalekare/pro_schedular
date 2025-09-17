@@ -18,7 +18,7 @@ import { Zap, Loader2 } from 'lucide-react';
  * clear states for loading, empty results, and generated timetables.
  */
 export default function GeneratorPage() {
-    // ✅ Get the correct, department-aware data from the context
+    // Get the correct, department-aware data from the context
     const { activeDepartmentData, globalData } = useContext(DataContext);
     const { user } = useContext(AuthContext);
 
@@ -35,7 +35,7 @@ export default function GeneratorPage() {
 
         // Simulate a solver run with a delay for better UX
         setTimeout(() => {
-            // ✅ Pass the correct department-specific and global data to the solver
+            // Pass the correct department-specific and global data to the solver
             const options = generateTimetables(activeDepartmentData, globalData);
             setTimetableOptions(options);
             setActiveOptionIndex(0);
@@ -48,6 +48,15 @@ export default function GeneratorPage() {
     // Role-Based Access Control: Only Admins or Schedulers can generate
     const canGenerate = user?.role === 'Admin' || user?.role === 'Scheduler';
 
+    // Gracefully handle the case where context data might still be loading
+    if (!activeDepartmentData) {
+        return (
+             <div className="flex items-center justify-center h-64">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Page Header */}
@@ -58,7 +67,7 @@ export default function GeneratorPage() {
                         {isLoading ? (
                             <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                         ) : (
-                            <Zap className="w-5 h--5 mr-2" />
+                            <Zap className="w-5 h-5 mr-2" /> // Corrected icon class
                         )}
                         {isLoading ? 'Generating...' : 'Generate New Timetable'}
                     </Button>
@@ -70,15 +79,14 @@ export default function GeneratorPage() {
                 <Card>
                     <CardContent className="text-center text-text-secondary dark:text-gray-400 py-12">
                         <p>
-                            Click the "Generate New Timetable" button to create schedule options for the
-                            {/* ✅ Dynamic department name in the empty state message */}
+                            Click the &quot;Generate New Timetable&quot; button to create schedule options for the
                             <span className="font-bold text-primary"> {activeDepartmentData.name}</span> department.
                         </p>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Results: Shown after timetables are generated */}
+            {/* Results: Show timetable options and details */}
             {timetableOptions.length > 0 && currentTimetable && (
                 <>
                     {/* Timetable Options with Tab Navigation */}
@@ -103,7 +111,7 @@ export default function GeneratorPage() {
                             </nav>
                         </CardHeader>
                         <CardContent>
-                            {/* ✅ Pass both data sources down to the grid for the filters */}
+                            {/* Pass both data sources down to the grid for the filters */}
                             <TimetableGrid 
                                 timetable={currentTimetable} 
                                 departmentData={activeDepartmentData}

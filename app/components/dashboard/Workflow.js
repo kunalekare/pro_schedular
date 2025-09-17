@@ -1,120 +1,119 @@
 'use client';
-import { useState, useContext } from 'react';
-import { AuthContext } from '../../context/AuthContext';
-import { Card } from '../ui/Card';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { CheckCircle, Clock, FileEdit, XCircle } from 'lucide-react';
 
+import { useState, useContext, useEffect } from 'react';
+import { AuthContext } from '@/app/context/AuthContext';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/app/components/ui/Card';
+import { Button } from '@/app/components/ui/Button';
+import { Input } from '@/app/components/ui/Input';
+import toast from 'react-hot-toast';
+import { Send } from 'lucide-react';
+
+/**
+ * Workflow Component
+ * Manages the review and approval process for a generated timetable.
+ * It displays the current status, a log of comments, and provides
+ * role-based actions (Submit, Approve, Reject).
+ */
 export default function Workflow({ timetable }) {
-    if (!timetable) return null;
-
+    // Hooks are correctly placed at the top level of the component.
     const { user } = useContext(AuthContext);
-
-    // Local state (in real app, sync with DB)
-    const [status, setStatus] = useState(timetable.status || 'Draft');
-    const [comments, setComments] = useState([
-        { user: 'Scheduler', text: 'Initial draft generated.' },
-    ]);
+    const [status, setStatus] = useState(timetable?.status || 'Not Generated');
+    const [comments, setComments] = useState(timetable?.comments || []);
     const [newComment, setNewComment] = useState('');
+    
+    // ✅ This useEffect hook keeps the component's state in sync when the user
+    // clicks on a different timetable option (Option A, Option B, etc.)
+    useEffect(() => {
+        setStatus(timetable?.status || 'Not Generated');
+        setComments(timetable?.comments || []);
+    }, [timetable]);
 
-    const handleAction = (newStatus, comment) => {
-        setStatus(newStatus);
-        setComments((prev) => [
-            ...prev,
-            { user: user.role, text: comment || newComment || `Status updated to ${newStatus}.` },
-        ]);
+    // This "guard clause" handles the UI state before a timetable is generated.
+    if (!timetable) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Review & Approval</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-text-secondary dark:text-gray-400">Generate a timetable to see the workflow actions.</p>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const handleAddComment = () => {
+        if (newComment.trim() === '') {
+            toast.error('Cannot submit an empty comment.');
+            return;
+        }
+        setComments(prev => [...prev, { role: user.role, text: newComment }]);
         setNewComment('');
+        toast.success('Comment added!');
+    }
+
+    const handleAction = (newStatus) => {
+        if (newComment.trim() === '') {
+            // Require a comment for major workflow actions
+            toast.error('Please add a comment explaining this action.');
+            return;
+        }
+        setStatus(newStatus);
+        setComments(prev => [...prev, { role: user.role, text: newComment }]);
+        setNewComment('');
+        toast.success(`Timetable status updated to "${newStatus}"`);
     };
 
-    const statusConfig = {
-        Draft: {
-            classes: 'bg-gray-100 text-gray-800',
-            icon: <FileEdit className="w-4 h-4 mr-1" />,
-        },
-        'Pending Approval': {
-            classes: 'bg-yellow-100 text-yellow-800',
-            icon: <Clock className="w-4 h-4 mr-1" />,
-        },
-        Approved: {
-            classes: 'bg-green-100 text-green-800',
-            icon: <CheckCircle className="w-4 h-4 mr-1" />,
-        },
+    // Professional styling for the status badges
+    const statusClasses = {
+        'Not Generated': "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+        Draft: "bg-warning-light text-warning-text",
+        "Pending Approval": "bg-primary-light text-primary-text",
+        Approved: "bg-success-light text-success-text",
     };
 
     return (
         <Card>
-            {/* Header with Status */}
-            <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Review & Approval</h2>
-                <span
-                    className={`flex items-center px-3 py-1 rounded-full text-sm font-medium ${statusConfig[status]?.classes}`}
-                >
-                    {statusConfig[status]?.icon}
-                    {status}
-                </span>
-            </div>
-
-            {/* Comments Section */}
-            <div className="mb-4 h-32 overflow-y-auto bg-gray-50 p-3 rounded-md border text-sm">
-                {comments.map((c, i) => (
-                    <p key={i} className="mb-2">
-                        <strong className="font-medium">{c.user}:</strong> {c.text}
-                    </p>
-                ))}
-            </div>
-
-            {/* Add Comment Input */}
-            {(user.role === 'Scheduler' || user.role === 'Admin') && (
-                <div className="mb-4 flex gap-2">
-                    <Input
+            <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Review & Approval</CardTitle>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusClasses[status]}`}>{status}</span>
+            </CardHeader>
+            <CardContent>
+                <div className="mb-4 h-32 overflow-y-auto bg-gray-50 dark:bg-gray-900/50 p-3 rounded-md border dark:border-gray-700">
+                    {comments.length > 0 ? comments.map((c, i) => (
+                        <p key={i} className="text-sm mb-2"><strong className="font-medium text-text-primary dark:text-gray-300">{c.role}:</strong> <span className="text-text-secondary dark:text-gray-400">{c.text}</span></p>
+                    )) : <p className="text-sm text-center text-gray-500 pt-12">No comments yet.</p>}
+                </div>
+                <div className="flex gap-2">
+                    <Input 
+                        placeholder="Add a comment to request changes or approve..." 
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="Add a comment..."
-                        className="flex-1"
+                        className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                     />
+                    {/* ✅ Added a dedicated button to add comments */}
+                    <Button variant="outline" onClick={handleAddComment} aria-label="Add Comment">
+                        <Send className="w-5 h-5" />
+                    </Button>
                 </div>
-            )}
-
-            {/* Role-Based Actions */}
-            {user.role === 'Scheduler' && status === 'Draft' && (
-                <Button
-                    onClick={() =>
-                        handleAction('Pending Approval', 'Submitted for review.')
-                    }
-                >
-                    Submit for Approval
-                </Button>
-            )}
-
-            {user.role === 'Admin' && status === 'Pending Approval' && (
+            </CardContent>
+            <CardFooter className="justify-between">
+                {/* Role-Based Action Buttons for the workflow */}
                 <div className="flex gap-4">
-                    <Button
-                        onClick={() =>
-                            handleAction('Approved', 'Timetable approved and published.')
-                        }
-                        className="bg-green-600 hover:bg-green-700 flex items-center"
-                    >
-                        <CheckCircle className="w-4 h-4 mr-1" /> Approve
-                    </Button>
-                    <Button
-                        onClick={() =>
-                            handleAction('Draft', 'Changes requested.')
-                        }
-                        className="bg-red-500 hover:bg-red-600 flex items-center"
-                    >
-                        <XCircle className="w-4 h-4 mr-1" /> Request Changes
-                    </Button>
+                    {user.role === 'Scheduler' && status === 'Draft' &&
+                        <Button onClick={() => handleAction('Pending Approval')}>Submit for Approval</Button>
+                    }
+                    {user.role === 'Admin' && status === 'Pending Approval' &&
+                        <>
+                            <Button onClick={() => handleAction('Approved')} className="bg-success hover:bg-green-700">Approve</Button>
+                            <Button onClick={() => handleAction('Draft')} variant="danger">Request Changes</Button>
+                        </>
+                    }
                 </div>
-            )}
-
-            {user.role === 'Faculty' &&
-                (status === 'Pending Approval' || status === 'Approved') && (
-                    <p className="text-sm text-gray-600">
-                        You can view the timetable. Contact <strong>Admin</strong> for
-                        changes.
-                    </p>
+                 {user.role === 'Faculty' && (
+                    <p className="text-sm text-text-secondary dark:text-gray-400">You can view the timetable and add comments.</p>
                 )}
+            </CardFooter>
         </Card>
     );
 }

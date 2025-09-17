@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 export const DataContext = createContext();
 
 // ======================================================================
-// ✅ NEW, EXPANDED INITIAL DATA WITH ALL YOUR REQUESTED DEPARTMENTS
+// INITIAL DATA with all requested departments
 // ======================================================================
 const initialData = {
   // Global data is shared across all departments
@@ -91,6 +91,8 @@ const initialData = {
   },
   constraints: {
     maxClassesPerDay: 5,
+    maxClassesPerWeek: 20,
+    minBreakBetweenClasses: 1,
   },
 };
 
@@ -109,6 +111,10 @@ export const DataProvider = ({ children }) => {
   const addItemToActiveDepartment = useCallback((itemType, newItem) => {
     setData((prev) => {
         const updatedDepts = { ...prev.departments };
+        // Ensure the array exists before pushing
+        if (!updatedDepts[activeDepartment][itemType]) {
+            updatedDepts[activeDepartment][itemType] = [];
+        }
         updatedDepts[activeDepartment][itemType].push(newItem);
         return { ...prev, departments: updatedDepts };
     });
@@ -149,7 +155,8 @@ export const DataProvider = ({ children }) => {
       addSubject,
       addBatch,
     };
-  }, [data, activeDepartment]); // Simplified dependencies for clarity
+  // ✅ This is the fully corrected dependency array to remove the build warning.
+  }, [data, activeDepartment, updateConstraints, addClassroom, addFaculty, addSubject, addBatch]);
 
   return (
     <DataContext.Provider value={value}>
